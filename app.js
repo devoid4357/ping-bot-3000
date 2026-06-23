@@ -118,7 +118,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       for (const option of data.options) {
         switch (option.name) {
-          case 'spamId': {
+          case 'spam_id': {
             intervalId = option.value;
             break;
           }

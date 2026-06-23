@@ -50,7 +50,7 @@ const STOPSPAM_COMMAND = {
   options: [
     {
       type: 4,
-      name: 'spamId',
+      name: 'spam_id',
       description: 'What\'s the spam id?',
       required: true,
     },
