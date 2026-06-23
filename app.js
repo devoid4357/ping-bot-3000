@@ -34,7 +34,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   }
 
   if (type === InteractionType.APPLICATION_COMMAND) {
-    console.log(req.body)
     const userId = req.body.user?.id ?? req.body.member.user.id;
     if ((process.env.DISALLOWED_USERS ?? []).includes(userId)) {
       return res.send({
