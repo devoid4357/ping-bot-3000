@@ -9,7 +9,7 @@ import {
   verifyKeyMiddleware,
 } from 'discord-interactions';
 import {DiscordRequest} from './utils.js';
-import {periodicallyPing} from "./ping.js"
+import {discordRequestRateLimitRespectful, periodicallyPing} from "./ping.js"
 
 // Create an express app
 const app = express();
@@ -34,7 +34,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   }
 
   if (type === InteractionType.APPLICATION_COMMAND) {
-    const userId = req.body.member.user.id;
+    console.log(req.body)
+    const userId = req.body.user?.id ?? req.body.member.user.id;
     if ((process.env.DISALLOWED_USERS ?? []).includes(userId)) {
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -58,6 +59,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       let user, interval;
       let length = null;
       let count = null;
+      let dmLogs = false;
 
       for (const option of data.options) {
         switch (option.name) {
@@ -75,6 +77,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           }
           case 'count': {
             count = option.value;
+            break;
+          }
+          case 'dmLogs': {
+            dmLogs = option.value;
             break;
           }
         }
@@ -95,9 +101,36 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       }
 
-      const intervalId = periodicallyPing(channelId, user, interval, length, count, () => {
-        delete intervalIdToUserMapping[user];
-      });
+      const intervalId =
+        periodicallyPing(channelId, user, interval, length, count, async () => {
+          delete intervalIdToUserMapping[user];
+
+          if (dmLogs) {
+            const dmChannel =
+              await discordRequestRateLimitRespectful(`users/@me/channels`, {
+                method: "POST",
+                body: {
+                  recipient_id: user
+                }
+              }, (resetAfter) => {
+                isPaused = true;
+                setTimeout(() => {
+                  isPaused = false;
+                }, resetAfter);
+              }, true).json();
+            discordRequestRateLimitRespectful(`channels/${dmChannel.id}/messages`, {
+              method: "POST",
+              body: {
+                content: `<@${user}>`
+              }
+            }, (resetAfter) => {
+              isPaused = true;
+              setTimeout(() => {
+                isPaused = false;
+              }, resetAfter);
+            }, true);
+          }
+        });
       intervalIdToUserMapping[userId] = intervalId;
 
       // Send a message into the channel where command was triggered from
