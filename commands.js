@@ -60,6 +60,6 @@ const STOPSPAM_COMMAND = {
   contexts: [0, 2],
 };
 
-const ALL_COMMANDS = [SPAMPING_COMMAND];
+const ALL_COMMANDS = [SPAMPING_COMMAND, STOPSPAM_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
