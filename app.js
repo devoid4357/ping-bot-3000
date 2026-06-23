@@ -34,6 +34,21 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   }
 
   if (type === InteractionType.APPLICATION_COMMAND) {
+    if ((process.env.UNALLOWED_USERS ?? []).includes(data.user.id)) {
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+          components: [
+            {
+              type: MessageComponentTypes.TEXT_DISPLAY,
+              content: '# no'
+            }
+          ]
+        },
+      });
+    }
+
     const {channel_id: channelId} = req.body;
     const {name: commandName} = data;
 
