@@ -1,6 +1,6 @@
 import {DiscordRequest} from './utils.js';
 
-export async function periodicallyPing(channelId, user, interval, length, count, onFinish) {
+export function periodicallyPing(channelId, user, interval, length, count, onFinish) {
   let pingCount = 0;
   let isPaused = false;
 

@@ -34,7 +34,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   }
 
   if (type === InteractionType.APPLICATION_COMMAND) {
-    if ((process.env.DISALLOWED_USERS ?? []).includes(req.body.member.user.id)) {
+    const userId = req.body.member.user.id;
+    if ((process.env.DISALLOWED_USERS ?? []).includes(userId)) {
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -97,7 +98,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const intervalId = periodicallyPing(channelId, user, interval, length, count, () => {
         delete intervalIdToUserMapping[user];
       });
-      intervalIdToUserMapping[user] = intervalId;
+      intervalIdToUserMapping[userId] = intervalId;
 
       // Send a message into the channel where command was triggered from
       return res.send({
@@ -125,7 +126,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         }
       }
 
-      const initiator = intervalIdToUserMapping[user];
+      const initiator = intervalIdToUserMapping[userId];
       if (initiator == undefined) {
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
