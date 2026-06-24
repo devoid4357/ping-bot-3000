@@ -188,7 +188,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       }
 
       clearInterval(intervalId);
-      delete intervalIdToUserMapping[user];
+      delete intervalIdToUserMapping[initiator];
 
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
