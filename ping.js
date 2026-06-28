@@ -1,4 +1,5 @@
 import {DiscordRequest} from './utils.js';
+import {randomBytes} from 'node:crypto';
 
 let isHttpRequestBeingSent = false;
 
@@ -7,62 +8,72 @@ export async function discordRequestRateLimitRespectful(
   endpoint,
   options,
   uponRateLimit,
-  uponFinish,
-  forceSend
+  uponSuccess,
+  forceSend,
+  shouldContinueTrying
 ) {
-  const response = await DiscordRequest(endpoint, options);
+  if (!shouldContinueTrying()) {
+    return;
+  }
+
+  const id = randomBytes(6).toString("hex");
+  const response = await DiscordRequest(endpoint, structuredClone(options));
   // Too Many Requests/rate limited!
   if (response.status == 429) {
     const result = await response.json();
-    (uponRateLimit ?? (() => { }))(result.reset_after);
+    (uponRateLimit ?? (() => { }))(true, result.retry_after);
     if (forceSend) {
       return await new Promise((resolve) => {
         setTimeout(() => {
-          discordRequestRateLimitRespectful(endpoint, options, uponRateLimit, false);
-          resolve();
-        }, result.reset_after);
+          discordRequestRateLimitRespectful(endpoint, options, uponRateLimit, uponSuccess, false, shouldContinueTrying)
+            .then(resolve);
+        }, result.retry_after * 1000);
       });
     }
     return;
   } else if (!response.ok) {
-    const data = await response.json();
-    console.log(`encountered status that is not consided "ok": ${response.status}`);
-    throw new Error(JSON.stringify(data));
+    throw new Error(await response.text());
   }
 
   if (response.headers.get('x-ratelimit-remaining') == 0) {
-    (uponRateLimit ?? (() => { }))(response.headers.get('x-ratelimit-reset-after'));
+    (uponRateLimit ?? (() => { }))(false, response.headers.get('x-ratelimit-reset-after'));
   }
+
+  uponSuccess();
 
   return response;
 }
 
 export function periodicallyPing(channelId, user, interval, length, count, onFinish) {
   let pingCount = 0;
-  let isPaused = false;
 
   const intervalId = setInterval(async () => {
-    if (isPaused) {
-      return;
-    }
-
+    let rateLimited = false;
     await discordRequestRateLimitRespectful(`channels/${channelId}/messages`, {
       method: "POST",
       body: {
         content: `<@${user}>`
       }
-    }, (resetAfter) => {
-      isPaused = true;
-      setTimeout(() => {
-        isPaused = false;
-      }, resetAfter);
-    }, true);
+    }, (erroredDueToLimit) => {
+      if (erroredDueToLimit) {
+        rateLimited = true;
+      }
+    }, () => {
+      pingCount += 1;
 
-    pingCount += 1;
-    if (count != null && pingCount >= count) {
-      clearInterval(intervalId);
-      onFinish();
-    }
+      if (count != null && pingCount >= count) {
+        clearInterval(intervalId);
+        onFinish();
+      }
+    }, true, () => {
+      if (count != null && pingCount >= count) {
+        clearInterval(intervalId);
+        onFinish();
+        return false;
+      }
+
+      return true;
+    });
   }, interval);
 
   if (length != null && length != undefined) {

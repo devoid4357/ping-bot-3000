@@ -111,23 +111,13 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                 body: {
                   recipient_id: user
                 }
-              }, (resetAfter) => {
-                isPaused = true;
-                setTimeout(() => {
-                  isPaused = false;
-                }, resetAfter);
-              }, true).json();
+              }, () => { }, true).json();
             discordRequestRateLimitRespectful(`channels/${dmChannel.id}/messages`, {
               method: "POST",
               body: {
                 content: `<@${user}>`
               }
-            }, (resetAfter) => {
-              isPaused = true;
-              setTimeout(() => {
-                isPaused = false;
-              }, resetAfter);
-            }, true);
+            }, () => { }, true);
           }
         });
       intervalIdToUserMapping[userId] = intervalId;
